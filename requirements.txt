@@ -1,0 +1,5 @@
+openchart==0.2.0
+truststore==0.10.5
+requests==2.34.2
+yfinance==1.8.0
+tradingview-ta==3.3.0

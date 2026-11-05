@@ -1,0 +1,9 @@
+.git/
+.venv/
+**/__pycache__/
+**/*.pyc
+*.csv
+data/
+tests/
+.DS_Store
+certs/

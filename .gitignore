@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+*.pyc
+nifty_option_chain_*.csv
+data/
+.DS_Store
+certs/
