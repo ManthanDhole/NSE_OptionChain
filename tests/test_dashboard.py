@@ -96,16 +96,16 @@ class DashboardTests(unittest.TestCase):
                 release.set()
                 worker.join(2)
 
-    def test_schedule_targets_thirty_seconds_between_fetch_starts(self):
+    def test_schedule_targets_five_seconds_between_fetch_starts(self):
         def end_after_one(delay):
-            self.assertEqual(delay, 27)
+            self.assertEqual(delay, 2)
             self.app.stop.set()
         self.app.refresh = Mock()
         self.app.wake.wait = Mock(side_effect=end_after_one)
         with patch("dashboard.time.monotonic", side_effect=[100, 103]):
             self.app.run()
         self.app.refresh.assert_called_once()
-        self.assertEqual(REFRESH_SECONDS, 30)
+        self.assertEqual(REFRESH_SECONDS, 5)
 
     def test_unexpected_output_path_is_rejected(self):
         result = subprocess.CompletedProcess([], 0, "Saved: /tmp/unrelated.csv\n", "")

@@ -1,10 +1,10 @@
 # NSE Option Chain
 
-A NIFTY 50 option-chain dashboard that fetches a new snapshot every **30 seconds**.
+A NIFTY 50 option-chain dashboard that fetches a new snapshot every **5 seconds**.
 
 - Green call data on the left and red put data on the right.
 - Strike prices centered, with the NIFTY spot price between lower and higher strikes.
-- All available strikes within **300 points above or below spot** for the selected expiry.
+- All available strikes within **600 points above or below spot** for the selected expiry.
 - Volume nearest the strike, followed by open interest and price; RSI at the outer edges.
 - Highest call and put volume cards, with the corresponding strike prices.
 - NIFTY index RSI and individual call/put RSI on **15-minute candles**, when available.
@@ -112,8 +112,8 @@ Open [http://localhost:8765](http://localhost:8765).
 - The application runs as a non-root user inside the container.
 - CSV snapshots are saved in the `nifty-data` Docker volume, preserving the latest
   three snapshots across container removal and recreation.
-- The first fetch starts immediately; subsequent fetches run every 30 seconds.
-- If a fetch exceeds 30 seconds, the next one starts after it finishes. Requests
+- The first fetch starts immediately; subsequent fetches run every 5 seconds.
+- If a fetch exceeds 5 seconds, the next one starts after it finishes. Requests
   never overlap, and previous data remains visible while loading or after errors.
 
 ### Logs, stop, and restart

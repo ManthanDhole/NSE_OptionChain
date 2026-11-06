@@ -1,4 +1,4 @@
-"""Show NIFTY spot price and option strikes within +/-300 points; save CSV.
+"""Show NIFTY spot price and option strikes within +/-600 points; save CSV.
 
 Usage:
     python3 nifty_option_chain.py
@@ -54,7 +54,7 @@ def flatten_chain(payload, expiry):
 
 
 def select_strike_range(payload, rows):
-    """Select strikes within 300 points of the snapshot spot price, inclusive."""
+    """Select strikes within 600 points of the snapshot spot price, inclusive."""
     records = payload["records"]
     candidates = [records.get("underlyingValue")]
     # Some responses expose the spot price only inside individual option legs.
@@ -72,7 +72,7 @@ def select_strike_range(payload, rows):
             break
     if spot is None:
         raise ValueError("NSE returned no valid NIFTY spot price; cannot select strike range.")
-    lower, upper = spot - 300, spot + 300
+    lower, upper = spot - 600, spot + 600
     selected = [dict(row, underlyingValue=spot) for row in rows
                 if lower <= float(row["strikePrice"]) <= upper]
     return spot, lower, upper, selected
@@ -172,7 +172,7 @@ def main():
         print(f"NSE snapshot timestamp: {payload['records'].get('timestamp', 'Unavailable')}")
         print(f"Expiry: {expiry} | Strike range: {lower:,.2f} to {upper:,.2f} (inclusive)")
         if not rows:
-            raise ValueError("No strikes available within 300 points of NIFTY spot; no CSV was written.")
+            raise ValueError("No strikes available within 600 points of NIFTY spot; no CSV was written.")
         print(f"RSI provider: {args.rsi_source}", flush=True)
         index_rsi = None
         if args.rsi_source == "tradingview":

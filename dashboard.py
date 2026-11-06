@@ -17,7 +17,7 @@ from urllib.parse import urlsplit
 
 ROOT = Path(__file__).resolve().parent
 SNAPSHOT_PATTERN = re.compile(r"nifty_option_chain_\d{8}_\d{6}_\d{6}\.csv")
-REFRESH_SECONDS = 30
+REFRESH_SECONDS = 5
 SNAPSHOT_DIR = Path(os.environ.get("NIFTY_DATA_DIR", ROOT)).resolve()
 
 
@@ -177,7 +177,7 @@ def main():
     def stop_on_signal(signum, frame):
         raise KeyboardInterrupt
     signal.signal(signal.SIGTERM, stop_on_signal)
-    print(f"NIFTY dashboard: http://localhost:{args.port} | Refresh: 30 seconds", flush=True)
+    print(f"NIFTY dashboard: http://localhost:{args.port} | Refresh: 5 seconds", flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
