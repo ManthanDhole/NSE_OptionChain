@@ -7,3 +7,5 @@ data/
 tests/
 .DS_Store
 certs/
+.env
+.local/

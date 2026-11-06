@@ -3,3 +3,5 @@ truststore==0.10.5
 requests==2.34.2
 yfinance==1.8.0
 tradingview-ta==3.3.0
+psycopg[binary]==3.3.8
+python-dotenv==1.2.4

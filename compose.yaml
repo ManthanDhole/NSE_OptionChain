@@ -1,0 +1,78 @@
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: nifty_admin
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Generate .env first}
+      POSTGRES_DB: nifty
+    ports:
+      - "127.0.0.1:55433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U nifty_admin -d nifty"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+  migrate:
+    build:
+      context: .
+      target: backend
+    command: [python, -m, services.migrate]
+    environment:
+      ADMIN_DATABASE_URL: postgresql://nifty_admin:${POSTGRES_PASSWORD}@postgres:5432/nifty
+      COLLECTOR_PASSWORD: ${COLLECTOR_PASSWORD}
+      API_PASSWORD: ${API_PASSWORD}
+    depends_on:
+      postgres:
+        condition: service_healthy
+  collector:
+    build:
+      context: .
+      target: backend
+    init: true
+    command: [python, -m, services.collector]
+    environment:
+      DATABASE_URL: postgresql://nifty_collector:${COLLECTOR_PASSWORD}@postgres:5432/nifty
+      REFRESH_SECONDS: ${REFRESH_SECONDS:-5}
+      SPOOL_DIR: /data/spool
+    volumes:
+      - collector-spool:/data/spool
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+  api:
+    build:
+      context: .
+      target: backend
+    command: [python, -m, services.api, --host, 0.0.0.0]
+    environment:
+      API_DATABASE_URL: postgresql://nifty_api:${API_PASSWORD}@postgres:5432/nifty
+      REFRESH_SECONDS: ${REFRESH_SECONDS:-5}
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).close()"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+  ui:
+    build:
+      context: .
+      target: ui
+    environment:
+      API_URL: http://api:8000
+    ports:
+      - "127.0.0.1:8765:8765"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+volumes:
+  postgres-data:
+  collector-spool:

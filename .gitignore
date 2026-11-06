@@ -5,3 +5,5 @@ nifty_option_chain_*.csv
 data/
 .DS_Store
 certs/
+.env
+.local/
