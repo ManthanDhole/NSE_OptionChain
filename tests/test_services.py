@@ -93,10 +93,17 @@ class DatabaseTests(unittest.TestCase):
         key = save_snapshot(data)
         self.assertEqual(len(get_snapshot(key, full=True)['rows']), 3)
         self.assertEqual(len(get_snapshot(key)['rows']), 2)
+        totals = get_snapshot(key)['totals']
+        self.assertEqual(totals['strike_count'], 3)
+        self.assertEqual(totals['CE_totalTradedVolume'], 6000)
+        self.assertEqual(totals['CE_openInterest'], 3000)
+        self.assertEqual(totals['PE_totalTradedVolume'], 1500)
+        self.assertEqual(totals['PE_openInterest'], 3600)
+
         self.assertEqual(self.admin.execute('SELECT count(*) FROM option_quotes').fetchone()[0], 6)
         self.assertEqual(self.admin.execute('SELECT raw_payload FROM snapshots').fetchone()[0], data['raw_payload'])
 
-    def test_weak_to_strong_transition_time_is_stable_and_boundary_is_neutral(self):
+    def test_bidirectional_strength_transition_time_is_stable_and_boundary_is_neutral(self):
         from services.store import save_snapshot, get_strength_transitions
         def capture(clock, second, day='2026-11-09'):
             data = self.snapshot()
@@ -120,7 +127,16 @@ class DatabaseTests(unittest.TestCase):
         get_strength_transitions.cache_clear()
         self.assertEqual(get_strength_transitions(later), event)
         weak_again = capture('10:00:20', 80)
-        self.assertEqual(get_strength_transitions(weak_again), {})
+        reverse = get_strength_transitions(weak_again)
+        self.assertEqual(reverse['CE']['from_status'], 'STRONG')
+        self.assertEqual(reverse['CE']['to_status'], 'WTT')
+        self.assertEqual(reverse['PE']['from_status'], 'STRONG')
+        self.assertEqual(reverse['PE']['to_status'], 'WTB')
+        self.assertEqual(datetime.fromisoformat(reverse['CE']['at']), datetime.fromisoformat('2026-11-09T10:00:20+05:30'))
+        weak_later = capture('10:00:22', 85)
+        self.assertEqual(get_strength_transitions(weak_later), reverse)
+        get_strength_transitions.cache_clear()
+        self.assertEqual(get_strength_transitions(weak_later), reverse)
         strong_again = capture('10:00:25', 70)
         self.assertNotEqual(get_strength_transitions(strong_again)['CE']['at'], event['CE']['at'])
         tomorrow = capture('10:00:00', 70, '2026-11-10')

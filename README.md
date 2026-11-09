@@ -431,3 +431,20 @@ a WTT/WTB state can cross this boundary before becoming STRONG. Missing/mixed da
 breaks the weak-to-strong comparison. Call/put transitions are independent and
 reset with the capture day or expiry. Times reflect successful captures, not an
 exact tick-by-tick exchange event time.
+
+Reverse changes are also recorded: **STRONG → WTT** or **STRONG → WTB** when the
+second-highest volume rises above 75% and its strike direction establishes WTT or
+WTB. Both directions show the first observed change time and old/new leader strikes.
+The event stays visible while that status continues; exactly 75% remains neutral.
+
+The live option-chain table ends with a **TOTAL** row summing call/put volume and
+OI across **all collected strikes for the snapshot’s expiry**, including strikes
+outside the displayed ±600 range. Totals refresh with each snapshot; unavailable
+or negative values are excluded, and entirely unavailable totals show a dash.
+Price and RSI columns remain blank (dash). The TOTAL label shows the full collected
+strike count; totals are computed in PostgreSQL independently of the UI range.
+
+Second-highest volume and OI cells use a very faint green/red tint when their value
+is strictly below 75% of that side's maximum for the same metric. At or above 75%,
+the existing second-highest shade remains. Percentage labels stay visible; the
+Highlights toggle still disables all ranking colours and percentages.

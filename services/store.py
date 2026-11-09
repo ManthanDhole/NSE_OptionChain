@@ -63,7 +63,14 @@ def get_snapshot(snapshot_id=None, full=False):
             query += ' AND strike BETWEEN %s AND %s'
             args.extend([meta['spot']-600, meta['spot']+600])
         rows = [r['payload'] for r in conn.execute(query+' ORDER BY strike', args)]
-    return {'id': str(meta['id']), 'rows': rows, 'spot': float(meta['spot']),
+        totals = {'strike_count': conn.execute('SELECT count(*) AS count FROM snapshot_rows WHERE snapshot_id=%s', (meta['id'],)).fetchone()['count']}
+        for total in conn.execute(
+            'SELECT side,sum(volume) FILTER (WHERE volume>=0) AS volume,sum(open_interest) FILTER (WHERE open_interest>=0) AS oi FROM option_quotes WHERE snapshot_id=%s AND expiry=%s GROUP BY side',
+            (meta['id'],meta['expiry'])):
+            totals[total['side']+'_totalTradedVolume'] = total['volume']
+            totals[total['side']+'_openInterest'] = total['oi']
+
+    return {'id': str(meta['id']), 'rows': rows, 'totals': totals, 'spot': float(meta['spot']),
             'expiry': meta['expiry'].strftime('%d-%b-%Y'), 'market_timestamp': meta['market_timestamp'],
             'index_rsi': float(meta['index_rsi']) if meta['index_rsi'] is not None else 'N/A',
             'filename': f"nifty_snapshot_{meta['id']}.csv", 'collected_at': meta['collected_at'].isoformat(), 'warnings': meta['warnings']}
@@ -210,7 +217,7 @@ def get_volume_shifts(snapshot_id):
 
 @lru_cache(maxsize=8)
 def get_strength_transitions(snapshot_id):
-    """Latest WTT/WTB -> STRONG event, retained while that strong state lasts."""
+    """Latest transition between STRONG/WTT/WTB, retained while its state lasts."""
     with connect(True) as conn:
         meta = conn.execute('SELECT id,collected_at,expiry,spot FROM snapshots WHERE id=%s', (snapshot_id,)).fetchone()
         if not meta:
@@ -248,15 +255,17 @@ def get_strength_transitions(snapshot_id):
                     elif max(second['strikes']) < min(highest['strikes']):
                         state = 'WTB'
             old = previous.get(side)
-            if state == 'STRONG':
-                if old and old['state'] in ('WTT', 'WTB'):
-                    events[side] = {'from_status': old['state'], 'to_status': 'STRONG',
+            if state is not None:
+                if old and old['state'] != state:
+                    events[side] = {'from_status': old['state'], 'to_status': state,
                                     'from_strikes': old['strikes'], 'to_strikes': levels[0]['strikes'],
                                     'at': captured.isoformat()}
+                elif not old:
+                    events.pop(side, None)
             else:
                 events.pop(side, None)
-            # Keep the last WTT/WTB across a neutral 75% boundary, but do not
-            # carry a STRONG event across missing or mixed data.
+            # Keep the last directional status across exactly 75%, but reset
+            # the comparison across missing or mixed data.
             if state is not None:
                 previous[side] = {'state': state, 'strikes': levels[0]['strikes']}
             elif len(levels) != 2 or levels[1]['volume']*4 != levels[0]['volume']*3:
