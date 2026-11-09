@@ -2,6 +2,7 @@
 import argparse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import os
+import signal
 from pathlib import Path
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -59,6 +60,9 @@ def main():
     parser.add_argument('--port', type=int, default=8765)
     parser.add_argument('--api-url', default=os.getenv('API_URL', 'http://127.0.0.1:8000'))
     args = parser.parse_args()
+    def shutdown(*args):
+        raise KeyboardInterrupt
+    signal.signal(signal.SIGTERM, shutdown)
     server = ThreadingHTTPServer((args.host, args.port), Handler)
     server.api_url = args.api_url.rstrip('/')
     print(f'NIFTY UI: http://localhost:{args.port}', flush=True)

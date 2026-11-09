@@ -1,0 +1,69 @@
+nameOverride: ""
+fullnameOverride: ""
+imagePullSecrets: []
+images:
+  backend:
+    repository: nifty-backend
+    tag: local
+    pullPolicy: IfNotPresent
+  ui:
+    repository: nifty-ui
+    tag: local
+    pullPolicy: IfNotPresent
+credentials:
+  # Existing Secret keys: POSTGRES_PASSWORD, COLLECTOR_PASSWORD, API_PASSWORD.
+  # If empty, credentials are generated once and reused through upgrades.
+  existingSecret: ""
+postgresql:
+  enabled: true
+  image: postgres:18
+  database: nifty
+  username: nifty_admin
+  storage: 20Gi
+  storageClass: "" # Empty uses the cluster's default StorageClass.
+  # When enabled=false, point to a provisioned database with role-management permissions.
+  externalHost: ""
+  externalPort: 5432
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {cpu: "1", memory: 1Gi}
+ui:
+  replicas: 1
+  # Must match your browser Origin for manual refresh POST requests.
+  origin: http://localhost:8765
+  service:
+    type: ClusterIP
+    port: 80
+  resources:
+    requests: {cpu: 25m, memory: 32Mi}
+    limits: {cpu: 250m, memory: 128Mi}
+api:
+  replicas: 1
+  service:
+    port: 8000
+  resources:
+    requests: {cpu: 50m, memory: 96Mi}
+    limits: {cpu: 500m, memory: 256Mi}
+collector:
+  enabled: true
+  refreshSeconds: 5
+  # Exactly one collector. Recreate strategy + SQL advisory lock prevent overlaps.
+  spool:
+    storage: 1Gi
+    storageClass: ""
+    existingClaim: ""
+  # Optional Secret holding a complete IT-approved PEM bundle for inspected HTTPS.
+  caSecret: ""
+  caSecretKey: ca-bundle.pem
+  resources:
+    requests: {cpu: 100m, memory: 192Mi}
+    limits: {cpu: "1", memory: 768Mi}
+migration:
+  activeDeadlineSeconds: 900
+  ttlSecondsAfterFinished: 86400
+  resources:
+    requests: {cpu: 50m, memory: 64Mi}
+    limits: {cpu: 500m, memory: 256Mi}
+nodeSelector: {}
+tolerations: []
+affinity: {}

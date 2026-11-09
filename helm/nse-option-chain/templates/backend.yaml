@@ -1,0 +1,120 @@
+{{- $root := . }}
+{{- range $component := list "api" "collector" }}
+{{- if or (eq $component "api") $root.Values.collector.enabled }}
+{{- $config := index $root.Values $component }}
+{{- $args := dict "root" $root "component" $component }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "nifty.fullname" $root }}-{{ $component }}
+  labels:
+    {{- include "nifty.labels" $root | nindent 4 }}
+spec:
+  replicas: {{ if eq $component "api" }}{{ $root.Values.api.replicas }}{{ else }}1{{ end }}
+  {{- if eq $component "collector" }}
+  strategy:
+    type: Recreate
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "nifty.selector" $root | nindent 6 }}
+      app.kubernetes.io/component: {{ $component }}
+  template:
+    metadata:
+      labels:
+        {{- include "nifty.selector" $root | nindent 8 }}
+        app.kubernetes.io/component: {{ $component }}
+      annotations:
+        migration-revision: {{ include "nifty.token" $root | quote }}
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: {{ if eq $component "api" }}30{{ else }}120{{ end }}
+      securityContext:
+        {{- include "nifty.podSecurity" $root | nindent 8 }}
+      {{- with $root.Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+        - name: wait-for-schema
+          image: {{ printf "%s:%s" $root.Values.images.backend.repository $root.Values.images.backend.tag | quote }}
+          imagePullPolicy: {{ $root.Values.images.backend.pullPolicy }}
+          command: [python, -m, services.wait]
+          securityContext:
+            {{- include "nifty.security" $root | nindent 12 }}
+          env:
+            {{- include "nifty.backendEnv" $args | nindent 12 }}
+          resources:
+            {{- toYaml $root.Values.migration.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      containers:
+        - name: {{ $component }}
+          image: {{ printf "%s:%s" $root.Values.images.backend.repository $root.Values.images.backend.tag | quote }}
+          imagePullPolicy: {{ $root.Values.images.backend.pullPolicy }}
+          {{- if eq $component "api" }}
+          command: [python, -m, services.api, --host, "0.0.0.0"]
+          {{- else }}
+          command: [python, -m, services.collector]
+          {{- end }}
+          securityContext:
+            {{- include "nifty.security" $root | nindent 12 }}
+          env:
+            {{- include "nifty.backendEnv" $args | nindent 12 }}
+          resources:
+            {{- toYaml $config.resources | nindent 12 }}
+          {{- if eq $component "api" }}
+          ports:
+            - name: http
+              containerPort: 8000
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          {{- else }}
+          readinessProbe:
+            exec:
+              command: [python, -m, services.collector_health]
+            initialDelaySeconds: 10
+            periodSeconds: 20
+            timeoutSeconds: 10
+          {{- end }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+            {{- if eq $component "collector" }}
+            - name: spool
+              mountPath: /data/spool
+            {{- if $root.Values.collector.caSecret }}
+            - name: company-ca
+              mountPath: /certs
+              readOnly: true
+            {{- end }}
+            {{- end }}
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        {{- if eq $component "collector" }}
+        - name: spool
+          persistentVolumeClaim:
+            claimName: {{ default (printf "%s-spool" (include "nifty.fullname" $root)) $root.Values.collector.spool.existingClaim }}
+        {{- if $root.Values.collector.caSecret }}
+        - name: company-ca
+          secret:
+            secretName: {{ $root.Values.collector.caSecret }}
+            items:
+              - key: {{ $root.Values.collector.caSecretKey }}
+                path: ca-bundle.pem
+        {{- end }}
+        {{- end }}
+      {{- include "nifty.scheduling" $root | nindent 6 }}
+{{- end }}
+{{- end }}

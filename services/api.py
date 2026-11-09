@@ -7,10 +7,11 @@ from io import StringIO
 import json
 import logging
 import os
+import signal
 from urllib.parse import urlsplit, parse_qs
 from uuid import UUID
 from .config import INTERVAL
-from .store import connect, get_snapshot, runtime_state
+from .store import connect, get_snapshot, runtime_state, get_920_baseline, get_previous_close, get_volume_shifts, get_strength_transitions
 
 
 def encode(value):
@@ -36,10 +37,16 @@ class Handler(BaseHTTPRequestHandler):
                 with connect(True) as conn:
                     conn.execute('SELECT 1')
                 return self.reply(200, {'status': 'ok'})
+            if route.path == '/api/previous-close':
+                return self.reply(200, get_previous_close())
+            if route.path == '/api/baseline':
+                return self.reply(200, get_920_baseline())
             if route.path == '/api/state':
                 snapshot = get_snapshot()
                 state = runtime_state()
                 return self.reply(200, {**state, 'snapshot': snapshot, 'cached': False,
+                                       'volume_shifts': get_volume_shifts(snapshot['id']) if snapshot else {},
+                                       'strength_transitions': get_strength_transitions(snapshot['id']) if snapshot else {},
                                        'last_success': snapshot['collected_at'] if snapshot else None,
                                        'warnings': snapshot['warnings'] if snapshot else [],
                                        'refresh_seconds': INTERVAL})
@@ -97,8 +104,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.reply(404, {'error': 'Not found'})
         try:
             state = runtime_state()
-            if not state.get('market_open'):
-                return self.reply(409, {'error': state.get('schedule_reason', 'Collection is not available')})
+            if not state.get('collector_available'):
+                return self.reply(409, {'error': state.get('collection_status', 'Collector is not available')})
             if not state.get('loading'):
                 with connect(True) as conn:
                     conn.execute('INSERT INTO refresh_requests DEFAULT VALUES')
@@ -116,6 +123,9 @@ def main():
     parser.add_argument('--host', default='127.0.0.1')
     parser.add_argument('--port', type=int, default=8000)
     args = parser.parse_args()
+    def shutdown(*args):
+        raise KeyboardInterrupt
+    signal.signal(signal.SIGTERM, shutdown)
     server = ThreadingHTTPServer((args.host, args.port), Handler)
     print(f'PostgreSQL API: http://{args.host}:{args.port}', flush=True)
     try:

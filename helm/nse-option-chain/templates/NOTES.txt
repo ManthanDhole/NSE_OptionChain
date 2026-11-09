@@ -1,0 +1,20 @@
+{{- $forwardPort := regexFind ":[0-9]+$" .Values.ui.origin | trimPrefix ":" | default "8765" -}}
+UI access (keep this command running):
+
+  kubectl -n {{ .Release.Namespace }} port-forward service/{{ include "nifty.fullname" . }}-ui {{ $forwardPort }}:{{ .Values.ui.service.port }}
+
+Open {{ .Values.ui.origin }} . The browser talks only to the UI Service; the UI
+proxies API requests using the API Service's internal DNS name.
+
+Check the release:
+
+  kubectl -n {{ .Release.Namespace }} get pods,services,pvc
+  helm test {{ .Release.Name }} -n {{ .Release.Namespace }} --logs
+
+The collector runs continuously whenever enabled, with no time/day restrictions.
+Historical snapshots remain readable when the collector is stopped.
+
+Credentials and data PVCs are retained on uninstall. Reuse them for reinstall;
+do not delete them unless you intend to discard data. This bundled PostgreSQL
+is a single-instance setup; configure backups or an external managed database
+for production.

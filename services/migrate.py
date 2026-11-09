@@ -7,10 +7,12 @@ from .config import ROOT
 
 def main():
     url = os.getenv('ADMIN_DATABASE_URL')
-    if not url:
-        raise RuntimeError('ADMIN_DATABASE_URL is required for migrations')
+    if not url and not os.getenv('PGHOST'):
+        raise RuntimeError('ADMIN_DATABASE_URL or PGHOST/PGUSER/PGPASSWORD is required for migrations')
+    url = url or ''
     with psycopg.connect(url, connect_timeout=5) as conn:
         conn.execute((ROOT/'database'/'schema.sql').read_text())
+        conn.execute('CREATE TABLE IF NOT EXISTS app_schema_releases (token text PRIMARY KEY, completed_at timestamptz NOT NULL DEFAULT now())')
         for role, key in (('nifty_collector', 'COLLECTOR_PASSWORD'), ('nifty_api', 'API_PASSWORD')):
             password = os.environ[key]
             exists = conn.execute('SELECT 1 FROM pg_roles WHERE rolname=%s', (role,)).fetchone()
@@ -23,6 +25,9 @@ def main():
         conn.execute('GRANT SELECT ON ALL TABLES IN SCHEMA public TO nifty_api')
         conn.execute('GRANT INSERT ON refresh_requests TO nifty_api')
         conn.execute('GRANT USAGE ON SEQUENCE refresh_requests_id_seq TO nifty_api')
+        token = os.getenv('MIGRATION_TOKEN')
+        if token:
+            conn.execute('INSERT INTO app_schema_releases(token) VALUES (%s) ON CONFLICT DO NOTHING', (token,))
     print('PostgreSQL schema and service roles ready.')
 
 

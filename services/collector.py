@@ -1,5 +1,5 @@
-"""Independent scheduled collector: provider -> durable spool -> PostgreSQL."""
-from datetime import datetime, timezone
+"""Independent continuous collector: provider -> durable spool -> PostgreSQL."""
+from datetime import datetime
 import json
 import logging
 import os
@@ -8,8 +8,7 @@ import signal
 import threading
 import time
 import uuid
-from .config import INTERVAL, IST, ROOT
-from .schedule import load_calendar, market_gate
+from .config import INTERVAL, ROOT
 from .store import connect, save_snapshot, state_update
 
 log = logging.getLogger('collector')
@@ -45,7 +44,6 @@ def drain_spool():
 
 
 def run():
-    holidays, verified, calendar_due = None, None, 0
     # Session lock prevents a second collector from doubling collection frequency.
     with connect(autocommit=True) as lock:
         if not lock.execute('SELECT pg_try_advisory_lock(8765001) AS acquired').fetchone()['acquired']:
@@ -56,27 +54,14 @@ def run():
             attempt_id = None
             try:
                 drain_spool()
-                now = datetime.now(timezone.utc)
-                if time.monotonic() >= calendar_due:
-                    try:
-                        holidays, verified = load_calendar(now.astimezone(IST).year)
-                    except Exception as exc:
-                        holidays, verified = None, None
-                        log.warning('Calendar unavailable: %s', exc)
-                    calendar_due = time.monotonic()+600
-                allowed, reason = market_gate(now, holidays, verified)
                 with connect() as conn:
                     pending = conn.execute('UPDATE refresh_requests SET handled_at=now() WHERE handled_at IS NULL RETURNING id').fetchall()
-                state_update(loading=False, market_open=allowed, schedule_reason=reason, refresh_seconds=INTERVAL,
-                             next_refresh=time.time()+max(0, next_fetch-time.monotonic()) if allowed else None)
-                if not allowed:
-                    STOP.wait(1)
-                    continue
+                state_update(loading=False, collector_available=True,
+                             collection_status='Continuous collection — no time restrictions',
+                             refresh_seconds=INTERVAL,
+                             next_refresh=time.time()+max(0, next_fetch-time.monotonic()))
                 if time.monotonic() < next_fetch and not pending:
                     STOP.wait(min(1, next_fetch-time.monotonic()))
-                    continue
-                # Recheck immediately before issuing any market-data request.
-                if not market_gate(datetime.now(timezone.utc), holidays, verified)[0]:
                     continue
                 started = time.monotonic()
                 with connect() as conn:
@@ -99,7 +84,7 @@ def run():
                 except Exception:
                     log.error('Database unavailable; queued snapshots will be retried')
                 STOP.wait(INTERVAL)
-        state_update(loading=False, market_open=False, schedule_reason='Collector stopped', next_refresh=None)
+        state_update(loading=False, collector_available=False, collection_status='Collector stopped', next_refresh=None)
 
 
 def main():

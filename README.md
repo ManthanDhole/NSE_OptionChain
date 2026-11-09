@@ -17,7 +17,7 @@ NSE + TradingView → Collector → PostgreSQL ← API ← UI web server ← Bro
   It has no UI or HTTP server. A database lock allows only one collector per database.
 - **Database** (`database/schema.sql`): retains every collected snapshot and its raw
   NSE response, all returned strikes for the selected expiry, typed call/put quotes,
-  RSI metadata, collection attempts, and calendar/status information.
+  RSI metadata, collection attempts, and collector status information.
 - **API** (`services/api.py`): reads committed PostgreSQL data. It never calls NSE or
   TradingView. It can queue a refresh request but cannot modify stored market data.
 - **UI** (`services/ui.py`, `ui/index.html`): serves the interface and proxies API
@@ -27,20 +27,16 @@ The legacy `nifty_option_chain.py` remains available as a standalone CSV tool.
 It is **not** used by the scheduled database collector. Its three-CSV rotation
 has no effect on PostgreSQL history.
 
-## Collection schedule
+## Continuous collection
 
-- **NSE trading days only**, Monday–Friday excluding NSE F&O trading holidays.
-- **09:15 inclusive to 15:30 exclusive, Asia/Kolkata (IST)**. No new market-data
-  request starts at or after 15:30. An in-flight request may finish and be saved
-  after the close, so fetched data is not discarded.
+- Collection runs whenever the collector is up: **all hours, every day**, including
+  weekends and holidays. No 09:15–15:30 time gate or NSE holiday-calendar lookup is used.
 - Requests start every **5 seconds** when possible. Slow requests never overlap;
   the next starts when the previous request finishes.
-- Holidays come from NSE's `holiday-master?type=trading` **FO** calendar, cached in
-  PostgreSQL and refreshed daily. Missing/stale calendars or a new year without
-  a verified calendar pause collection. Retries occur every 10 minutes.
-- Special weekend/Muhurat sessions outside this regular schedule are not collected.
-- Manual refresh cannot bypass the session or holiday rules. Outside the session,
-  the UI remains available and displays the last stored snapshot.
+- Manual refresh is available whenever the collector is online, regardless of time
+  or day. It queues work through SQL instead of calling a provider from the UI/API.
+- NSE may return the last available snapshot outside market hours. Each capture
+  retains its collection timestamp separately from NSE's own market timestamp.
 - A running computer and services are required. Missed snapshots while the app is
   stopped cannot be reconstructed from a current option-chain endpoint.
 
@@ -70,6 +66,29 @@ git switch microservices-architecture-app
 Requires Python 3.10+ and PostgreSQL 15+ command-line tools (`initdb`, `pg_ctl`) on
 PATH. The local setup was verified with PostgreSQL 18 on macOS. Install PostgreSQL
 using its official distribution or your package manager if it is not installed.
+
+### Start and stop with one script
+
+After installing the prerequisites and `.venv` dependencies below, run from the
+repository directory (no environment activation required):
+
+```sh
+python3 nifty-options.py start
+python3 nifty-options.py status
+python3 nifty-options.py stop
+python3 nifty-options.py restart
+```
+
+`start` prepares/starts PostgreSQL and runs the UI, API, and collector in the
+background. Open http://localhost:8765. You may close the terminal; the computer
+must remain awake. `stop` waits for collection to finish before stopping the local
+database and preserves saved data. Repeated starts/stops are safe. Logs append to
+`.local/app.log`; PostgreSQL logs are in `.local/postgres.log`. `status` exits
+with code 1 when the managed app is stopped.
+
+Use this script consistently for background processes. It refuses to stop
+unrelated processes using app ports. Stop an older foreground launcher with
+Ctrl+C before using `nifty-options.py start`.
 
 ### First-time startup
 
@@ -107,9 +126,8 @@ It does not erase collected history. Do not rerun `initdb` manually or remove
 `.env` / `.local/pgdata` to restart the application.
 
 Open [http://localhost:8765](http://localhost:8765). Keep the launcher terminal
-running. Outside market hours, a **Session paused** indicator is expected; saved
-data remains available and collection resumes at the next eligible session.
-Your computer must remain awake and the collector running to record that session.
+running. Collection starts immediately and continues at any time of day.
+Your computer must remain awake and the collector running to capture snapshots.
 The native processes are not installed as automatic operating-system startup services.
 
 ### Verify startup
@@ -123,7 +141,7 @@ curl http://127.0.0.1:8765/api/state
 ```
 
 `/health` should return `{"status": "ok"}`. `/api/state` reports the collector's
-schedule reason, loading/error state, and latest database snapshot. An empty
+collector availability, loading/error state, and latest database snapshot. An empty
 snapshot is normal before the first successful collection. Database activity can
 also be inspected with the SQL queries below.
 
@@ -148,7 +166,7 @@ then activate `.venv` in **each terminal** and run one command per terminal:
 
 ```sh
 python -m services.api       # 127.0.0.1:8000
-python -m services.collector # scheduled data capture
+python -m services.collector # continuous data capture
 python -m services.ui        # 127.0.0.1:8765
 ```
 
@@ -218,6 +236,44 @@ and set `REQUESTS_CA_BUNDLE` there. Linux containers do not inherit the Mac Keyc
 A certificate with invalid constraints needs correction by IT. Certificate
 verification remains enabled. The native macOS collector uses `truststore`.
 
+## Run in Kubernetes with Helm
+
+The Helm chart deploys the UI, API, collector, migration Job and persistent
+PostgreSQL independently. The UI is exposed by a **ClusterIP Service** and reached
+with `kubectl port-forward`; API/database traffic stays inside the cluster.
+
+Build the images and make them available to the target cluster (load them into
+kind/minikube or push to a registry):
+
+```sh
+docker build --target backend -t nifty-backend:local .
+docker build --target ui -t nifty-ui:local .
+# For kind, replace nifty with your cluster name:
+kind load docker-image nifty-backend:local nifty-ui:local --name nifty
+```
+
+Install and open the UI:
+
+```sh
+helm upgrade --install nifty ./helm/nse-option-chain \
+  -n nifty --create-namespace --wait --wait-for-jobs --timeout 15m
+kubectl -n nifty port-forward service/nifty-nse-option-chain-ui 8765:80
+```
+
+Visit [http://localhost:8765](http://localhost:8765) and leave port-forward running.
+No separate API port-forward is needed: the UI proxies requests through the
+internal API Service. Stop any local app already using port 8765 first.
+
+```sh
+helm test nifty -n nifty --logs
+```
+
+See [the Helm setup guide](helm/nse-option-chain/README.md) for cluster prerequisites,
+registry images, configurable values, persistent storage, Secret management,
+external PostgreSQL, company CA bundles, upgrades and troubleshooting. Kubernetes
+1.28+ and a default/configured StorageClass are required. This installation uses
+its own database; it does not automatically import native/Compose history.
+
 ## Startup troubleshooting
 
 - **Port already in use:** stop the previous local launcher or Compose stack before
@@ -228,9 +284,8 @@ verification remains enabled. The native macOS collector uses `truststore`.
   Never delete the database directory or volume to resolve a connection error.
 - **Collector offline:** start `python scripts/run_local.py`, or run
   `python -m services.collector` if managing processes independently.
-- **Collection paused:** check IST time, weekend/holiday status, and the schedule
-  reason in `/api/state`. A missing/stale NSE calendar deliberately pauses capture;
-  keep the collector running so it can retry.
+- **Collector stopped/unavailable:** start the collector and check its logs and
+  database connectivity. There are no time-of-day or holiday restrictions.
 - **Another collector is already running:** stop the extra process; only one
   collector may write to a given application database.
 - **NSE/TradingView request failure:** inspect collector logs and the UI's data
@@ -247,7 +302,7 @@ verification remains enabled. The native macOS collector uses `truststore`.
 | `snapshot_rows` | Full flattened strike rows, including enriched RSI metadata |
 | `option_quotes` | Per-snapshot, strike, expiry, CE/PE; numeric price, OI, volume, IV, RSI; remaining fields in JSONB |
 | `collection_attempts` | Attempt time, completion, saved snapshot ID, error |
-| `trading_calendars` | Verified yearly NSE F&O holidays and source |
+| `trading_calendars` | Legacy holiday records retained for compatibility; no longer used |
 | `collector_state` | Durable status and collector heartbeat |
 | `refresh_requests` | UI/API refresh queue handled by the collector |
 
@@ -295,7 +350,7 @@ backups private and outside source control.
 - `GET /api/snapshots/<uuid>`: all stored strike rows for one snapshot.
 - `GET /api/snapshots/<uuid>/raw`: the complete original NSE JSON response.
 - `GET /api/download?id=<uuid>`: CSV exported from SQL, with all stored strike rows.
-- `POST /api/refresh`: queue a fetch only while the collector/session is available.
+- `POST /api/refresh`: queue a fetch whenever the collector is online.
 
 The UI polls the API once per second for status. This polling reads SQL; it does
 not issue external provider requests. API/DB failures keep the last rendered
@@ -310,9 +365,69 @@ python scripts/test_database.py
 
 The second command creates a **disposable test database**, verifies real SQL
 round trips, full-strike retention, atomic rollback, idempotent retries, spool
-recovery, service permissions, API reads/exports, and closed-session rejection,
+recovery, service permissions, API reads/exports, and offline-collector rejection and continuous capture,
 then removes only that test database. Live collection history is untouched.
 
 TradingView may not return RSI for individual NSE option contracts. These values
 stay N/A; index RSI is never substituted. Custom strength/weakness banners follow
 the configured volume comparisons and are computed from displayed strikes.
+
+### Daily 9:20 AM reference
+
+The collector already persists every successful option-chain fetch and all strikes
+in PostgreSQL. `/api/baseline` selects today's earliest saved snapshot captured
+between 09:20:00 and 09:20:59 IST, requiring the NSE timestamp to also be in that
+same minute/date. Later captures and stale NSE responses are never substituted.
+The stored history survives restarts; no CSV or extra collection process is needed.
+
+Turn **9:20 AM on** to show reference call/put prices, OI, and volume in yellow
+under the current values, matched by expiry and strike. Missing contracts show a
+dash. The reference toggle is off by default and independent of volume/OI ranking
+highlights. The UI checks for the reference every 15 seconds while enabled. If the
+app was not collecting successfully during that minute, it reports unavailable.
+Continuous collection and the five-second refresh remain unchanged. Your computer
+and collector must be running at 9:20 AM IST to capture the reference.
+
+### Previous session closing summary
+
+The bottom of the dashboard shows the latest available prior session's closing
+snapshot, dated by the NSE timestamp rather than the collection date. This handles
+repeated weekend/off-hours quotes. Only stored NSE quotes from 15:30–15:59 IST
+qualify; if none exist, the panel reports unavailable instead of using intraday
+data. The exact available session date, timestamp, and expiry are displayed.
+
+`GET /api/previous-close` returns the two highest distinct positive volume and OI
+levels for calls and puts, grouping tied strikes. It also returns side-specific
+and combined totals across every stored strike for that snapshot's expiry,
+including strikes outside the live table's ±600 range. These are snapshot totals,
+not sums across time or across all expiries. Missing/negative values are excluded
+and coverage counts are shown. The panel refreshes once a minute. Only previously
+captured data can be shown; this does not backfill historical NSE data.
+
+### Highest-volume strike movement
+
+CALLS and PUTS signal cells also show the latest change of the highest-volume
+strike(s), with the old/new strike and capture time in IST. Existing STRONG/WTT/WTB
+signals remain visible. For movement labels, top means a higher strike and bottom
+means a lower strike, independently of the unchanged table order/alignment. A move
+to a higher strike means **SHIFTED FROM BOTTOM TO TOP**; a move to a lower strike
+means **SHIFTED FROM TOP TO BOTTOM**. Overlapping tied leader sets are labelled **VOLUME LEADER TIE CHANGED**.
+
+History is reconstructed from persisted snapshots for the displayed snapshot's
+IST capture day and expiry, using the same current ±600 strike window throughout
+the comparison. Calls and puts are tracked independently. The latest shift remains
+visible until another leader change, survives page reloads/app restarts, and resets
+for a new capture day/expiry. No movement is shown without two different observed
+leader sets. This tracks which strike has the maximum volume (100% in the existing
+ranking), not a change in the second-highest-volume ratio.
+
+When the second-highest distinct volume falls strictly below 75% of the maximum,
+the side is STRONG. If its preceding weak state was WTT or WTB, the movement line
+shows **WTT → STRONG** or **WTB → STRONG**, the old/new leader strikes and first
+observed change time in IST. This replaces the direction-only label while the
+strong episode continues. The recorded time does not change with each refresh;
+history is reconstructed from SQL and survives reloads. Exactly 75% stays neutral;
+a WTT/WTB state can cross this boundary before becoming STRONG. Missing/mixed data
+breaks the weak-to-strong comparison. Call/put transitions are independent and
+reset with the capture day or expiry. Times reflect successful captures, not an
+exact tick-by-tick exchange event time.

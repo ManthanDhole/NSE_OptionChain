@@ -1,0 +1,65 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "nifty.fullname" . }}-migrate-r{{ .Release.Revision }}
+  labels:
+    {{- include "nifty.labels" . | nindent 4 }}
+    app.kubernetes.io/component: migration
+spec:
+  backoffLimit: 3
+  activeDeadlineSeconds: {{ .Values.migration.activeDeadlineSeconds }}
+  ttlSecondsAfterFinished: {{ .Values.migration.ttlSecondsAfterFinished }}
+  template:
+    metadata:
+      labels:
+        {{- include "nifty.selector" . | nindent 8 }}
+        app.kubernetes.io/component: migration
+    spec:
+      automountServiceAccountToken: false
+      restartPolicy: Never
+      securityContext:
+        {{- include "nifty.podSecurity" . | nindent 8 }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: migrate
+          image: {{ printf "%s:%s" .Values.images.backend.repository .Values.images.backend.tag | quote }}
+          imagePullPolicy: {{ .Values.images.backend.pullPolicy }}
+          command: [python, -m, services.migration_job]
+          securityContext:
+            {{- include "nifty.security" . | nindent 12 }}
+          env:
+            {{- include "nifty.dbEnv" . | nindent 12 }}
+            - name: PGUSER
+              value: {{ .Values.postgresql.username | quote }}
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "nifty.secret" . }}
+                  key: POSTGRES_PASSWORD
+            - name: COLLECTOR_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "nifty.secret" . }}
+                  key: COLLECTOR_PASSWORD
+            - name: API_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "nifty.secret" . }}
+                  key: API_PASSWORD
+            - name: MIGRATION_TOKEN
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "nifty.fullname" . }}-runtime
+                  key: MIGRATION_TOKEN
+          resources:
+            {{- toYaml .Values.migration.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+      {{- include "nifty.scheduling" . | nindent 6 }}

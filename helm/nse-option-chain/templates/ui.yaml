@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "nifty.fullname" . }}-ui
+  labels:
+    {{- include "nifty.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.ui.replicas }}
+  selector:
+    matchLabels:
+      {{- include "nifty.selector" . | nindent 6 }}
+      app.kubernetes.io/component: ui
+  template:
+    metadata:
+      labels:
+        {{- include "nifty.selector" . | nindent 8 }}
+        app.kubernetes.io/component: ui
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        {{- include "nifty.podSecurity" . | nindent 8 }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: ui
+          image: {{ printf "%s:%s" .Values.images.ui.repository .Values.images.ui.tag | quote }}
+          imagePullPolicy: {{ .Values.images.ui.pullPolicy }}
+          command: [python, -m, services.ui, --host, "0.0.0.0"]
+          securityContext:
+            {{- include "nifty.security" . | nindent 12 }}
+          env:
+            - name: API_URL
+              value: {{ printf "http://%s-api:%v" (include "nifty.fullname" .) .Values.api.service.port | quote }}
+          ports:
+            - name: http
+              containerPort: 8765
+          resources:
+            {{- toYaml .Values.ui.resources | nindent 12 }}
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
