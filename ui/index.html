@@ -17,6 +17,11 @@ td.call-cell.second-volume.second-faint{background:#182c27!important;color:#b7cf
 .previous-close{margin-top:28px;padding:22px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}.previous-close h2{font-size:19px;margin:0 0 8px}.close-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:18px}.close-side{padding:18px;border:1px solid var(--line);border-radius:9px;min-width:0}.close-side h3{margin:0 0 15px;font-size:14px}.close-level{padding:10px 0;border-top:1px solid var(--line);line-height:1.8;overflow-wrap:anywhere}.close-level strong{display:block;font-size:13px}.close-total{margin-top:16px;padding:14px;background:#24251d;border:1px solid #655631;border-radius:8px;color:var(--gold);line-height:1.9}.close-side .subtle{display:block}@media(max-width:650px){.close-grid{grid-template-columns:1fr}.previous-close{padding:16px}}
 .volume-shift{display:block;color:var(--gold);font-size:10px;line-height:1.7;margin-top:8px;font-weight:550}.volume-shift[hidden]{display:none}
 .totals-row td{background:#202b2d!important;border-top:2px solid #6b7560;font-weight:700;height:56px}.totals-row .call-cell{color:var(--green)}.totals-row .put-cell{color:var(--red)}.totals-row .strike{color:var(--gold);font-size:10px;line-height:1.5}.totals-row td{overflow-wrap:anywhere}
+.spot-row .spot-summary{padding:10px 4px;text-align:center;font-size:11px;line-height:1.5}.spot-row .call-summary{color:var(--green)}.spot-row .put-summary{color:var(--red)}.spot-status{display:block;font-weight:700}.spot-ratio{display:block;font-size:11px;font-weight:550;margin-top:3px}.highlights-off .spot-ratio{display:none}
+.event-badge{display:inline-block;padding:3px 7px;border-radius:5px;font-weight:700;letter-spacing:.2px}.call-signal .event-badge{background:#246744;color:#dcffea}.put-signal .event-badge{background:#87384b;color:#ffe5ec}
+.signal-row .signal-title{display:inline-block;padding:5px 10px;border-radius:6px}.signal-row .call-signal .signal-title{background:#38b87c;color:#062619;border:1px solid #6adca4}.signal-row .put-signal .signal-title{background:#ed7189;color:#350711;border:1px solid #ffa4b5}
+.signal-row th.market-sentiment{background:radial-gradient(ellipse at 50% 10%,#9254c7 0%,#653297 52%,#422064 100%);color:#faf2ff;border:2px solid #bf87f0;padding:18px 8px;box-shadow:inset 0 0 20px #bb78ff30,0 0 14px #b36aff55;vertical-align:middle;text-align:center;overflow-wrap:anywhere}.sentiment-label{display:block;font-size:9px;line-height:1.6;letter-spacing:1.1px;font-weight:800;color:#ead4ff}.sentiment-value{display:block;font-size:15px;line-height:1.4;letter-spacing:.5px;font-weight:850;margin:10px 0 7px;color:#ffffff;text-shadow:0 0 8px #d5a1ff66}.sentiment-note{display:block;font-size:10px;line-height:1.5;font-weight:500;color:#ddc3f1}
+td.call-cell.price-window-match,td.put-cell.price-window-match{background:#18566b!important;color:#e3fbff;font-weight:750;box-shadow:inset 0 0 0 1px #59d7f2, inset 0 0 12px #5adfff18}.highlights-off td.call-cell.price-window-match{background:#10231b45!important;color:var(--text);font-weight:400;box-shadow:none}.highlights-off td.put-cell.price-window-match{background:#2a172245!important;color:var(--text);font-weight:400;box-shadow:none}
 </style>
 </head>
 <body>
@@ -27,7 +32,7 @@ td.call-cell.second-volume.second-faint{background:#182c27!important;color:#b7cf
 <section class="cards" aria-label="Market overview"><div class="card"><label>NIFTY 50 · Spot price</label><div class="metric" id="spot">—</div><div class="subtle" id="marketTime">Waiting for NSE snapshot</div></div><div class="card"><label>Index RSI · 14 / 15 min</label><div class="metric" id="indexRsi">—</div><div class="subtle">TradingView · underlying index</div></div><div class="card call"><label>Highest call volume</label><div class="metric green" id="callVolume">—</div><div class="subtle" id="callOi">Strike —</div></div><div class="card put"><label>Highest put volume</label><div class="metric red" id="putVolume">—</div><div class="subtle" id="putOi">Strike —</div></div></section>
 
 <div id="baselineStatus" hidden role="status"></div>
-<section class="table-panel" aria-label="Option chain"><div id="track" class="loading-track"></div><div class="table-toolbar"><span class="title">Option chain <span class="subtle" id="strikeCount"></span></span><div class="legend"><span><i style="background:var(--green)"></i>CALLS</span><span><i style="background:var(--red)"></i>PUTS</span><span id="countdown">Refresh every 5s</span></div></div><div class="scroll"><table><colgroup><col style="width:9%"><col style="width:11%"><col style="width:11%"><col style="width:12%"><col style="width:14%"><col style="width:12%"><col style="width:11%"><col style="width:11%"><col style="width:9%"></colgroup><thead><tr class="signal-row"><th colspan="4" id="callSignalBox" class="call-signal"><span id="callSignal" class="signal-title" role="status">CALLS · WAITING FOR DATA</span><span id="callSignalDetail" class="signal-detail">Volume comparison</span><span id="callVolumeShift" class="volume-shift" hidden></span></th><th class="signal-rule" aria-hidden="true"></th><th colspan="4" id="putSignalBox" class="put-signal"><span id="putSignal" class="signal-title" role="status">PUTS · WAITING FOR DATA</span><span id="putSignalDetail" class="signal-detail">Volume comparison</span><span id="putVolumeShift" class="volume-shift" hidden></span></th></tr><tr class="side-head"><th colspan="4" class="call-head">CALL OPTIONS <span style="opacity:.5">/ CE</span></th><th class="strike-head">STRIKE</th><th colspan="4" class="put-head">PUT OPTIONS <span style="opacity:.5">/ PE</span></th></tr><tr class="column-head"><th>RSI <span style="opacity:.5">15m</span></th><th>Price</th><th>OI</th><th>Volume</th><th>Price</th><th>Volume</th><th>OI</th><th>Price</th><th>RSI <span style="opacity:.5">15m</span></th></tr></thead><tbody id="rows"><tr><td colspan="9" class="empty">Connecting to your local data service…<br>Your option chain will appear here.</td></tr></tbody></table></div></section>
+<section class="table-panel" aria-label="Option chain"><div id="track" class="loading-track"></div><div class="table-toolbar"><span class="title">Option chain <span class="subtle" id="strikeCount"></span></span><div class="legend"><span><i style="background:var(--green)"></i>CALL</span><span><i style="background:var(--red)"></i>PUT</span><span id="countdown">Refresh every 5s</span></div></div><div class="scroll"><table><colgroup><col style="width:9%"><col style="width:11%"><col style="width:11%"><col style="width:12%"><col style="width:14%"><col style="width:12%"><col style="width:11%"><col style="width:11%"><col style="width:9%"></colgroup><thead><tr class="signal-row"><th colspan="4" id="callSignalBox" class="call-signal"><span id="callSignal" class="signal-title" role="status">CALL · WAITING FOR DATA</span><span id="callSignalDetail" class="signal-detail">Volume comparison</span><span id="callVolumeShift" class="volume-shift" hidden></span></th><th id="marketSentimentCell" class="market-sentiment" scope="col"><span class="sentiment-label">OVERALL MARKET SENTIMENT</span><span id="marketSentiment" class="sentiment-value" role="status" aria-live="polite">WAITING FOR DATA</span><span id="marketSentimentRule" class="sentiment-note">Based on CALL / PUT volume status</span></th><th colspan="4" id="putSignalBox" class="put-signal"><span id="putSignal" class="signal-title" role="status">PUT · WAITING FOR DATA</span><span id="putSignalDetail" class="signal-detail">Volume comparison</span><span id="putVolumeShift" class="volume-shift" hidden></span></th></tr><tr class="side-head"><th colspan="4" class="call-head">CALL OPTIONS <span style="opacity:.5">/ CE</span></th><th class="strike-head">STRIKE</th><th colspan="4" class="put-head">PUT OPTIONS <span style="opacity:.5">/ PE</span></th></tr><tr class="column-head"><th>RSI <span style="opacity:.5">15m</span></th><th>Price</th><th>OI</th><th>Volume</th><th>Price</th><th>Volume</th><th>OI</th><th>Price</th><th>RSI <span style="opacity:.5">15m</span></th></tr></thead><tbody id="rows"><tr><td colspan="9" class="empty">Connecting to your local data service…<br>Your option chain will appear here.</td></tr></tbody></table></div></section>
 <div class="foot"><span id="freshness" role="status" aria-live="polite">Waiting for the first update.</span><span id="highlightLegend">Volume & OI: bright = highest · softer = second · faint = second below 75%</span></div><details id="detail" hidden><summary>Data availability details</summary><div id="warnings"></div></details>
 <section class="previous-close" aria-labelledby="previousCloseHeading"><h2 id="previousCloseHeading">Previous session · Closing option chain</h2><div id="previousCloseMeta" class="subtle" role="status">Loading previous closing snapshot…</div><div id="previousCloseContent"></div></section>
 <footer class="bottom"><span>PostgreSQL snapshots · NSE data · TradingView RSI</span><span>5-second collection · PostgreSQL history retained</span></footer>
@@ -70,8 +75,8 @@ function cell(text,cls=''){const e=document.createElement('td');e.className=cls;
 function rsiCell(value,side){const td=cell('',side+'-cell'),n=number(value),badge=document.createElement('span');badge.className=n===null?'na':'rsi'+(n>=70?' high':n<=30?' low':'');badge.textContent=n===null?'N/A':n.toFixed(1);badge.title=n===null?'RSI not available for this exact contract':'14-period RSI · 15-minute candles';td.append(badge);return td}
 function volumeRanks(rows,field){return [...new Set(rows.map(row=>number(row[field])).filter(value=>value!==null&&value>0))].sort((a,b)=>b-a).slice(0,2)}
 
-function volumeSignal(rows,side){
-  const field=side+'_totalTradedVolume';
+function volumeSignal(rows,side,metric='totalTradedVolume'){
+  const field=side+'_'+metric;
   const eligible=rows.filter(row=>number(row.strikePrice)>0&&number(row[field])>0);
   const ranks=volumeRanks(eligible,field);
   if(ranks.length<2)return {message:'NOT ENOUGH VOLUME DATA',detail:'Two distinct positive volume levels are required.',active:false};
@@ -86,33 +91,99 @@ function volumeSignal(rows,side){
   if(Math.max(...second)<Math.min(...top))return {message:'WEAK TOWARDS BOTTOM',detail:level+' - WTB: '+secondLabel,active:true};
   return {message:'MIXED STRIKE DIRECTION',detail:'Tied volume levels span both directions. '+detail,active:false};
 }
+function selectSignalEvent(shift,candidate,stateCode){
+ const transition=candidate&&candidate.to_status===stateCode?candidate:null;
+ if(!shift)return {event:transition,isTransition:!!transition};
+ if(!transition)return {event:shift,isTransition:false};
+ const shiftTime=Date.parse(shift.at),transitionTime=Date.parse(transition.at);
+ const involvesStrong=transition.from_status==='STRONG'||transition.to_status==='STRONG';
+ // A simultaneous WTT/WTB flip must not hide the actual strike movement.
+ const useTransition=transitionTime>shiftTime||(transitionTime===shiftTime&&involvesStrong);
+ return {event:useTransition?transition:shift,isTransition:useTransition};
+}
+function marketSentiment(callStatus,putStatus){
+ const code={'WEAK TOWARDS TOP':'WTT','WEAK TOWARDS BOTTOM':'WTB','STRONG':'STRONG'};
+ const call=code[callStatus],put=code[putStatus];
+ if(!callStatus||!putStatus||callStatus==='NOT ENOUGH VOLUME DATA'||putStatus==='NOT ENOUGH VOLUME DATA')return {text:'WAITING FOR DATA',rule:null};
+ if(call==='WTT'&&put==='WTT')return {text:'Nifty is in Bull Run',rule:1};
+ if(call==='WTB'&&put==='WTB')return {text:'Nifty is in Blood Bath',rule:2};
+ if((call==='WTT'&&put==='STRONG')||(call==='STRONG'&&put==='WTT'))return {text:'Nifty is in Slightly Bullish',rule:3};
+ if((call==='STRONG'&&put==='WTB')||(call==='WTB'&&put==='STRONG'))return {text:'Nifty is in Slightly Bearish',rule:4};
+ if(call==='STRONG'&&put==='STRONG')return {text:'Nifty is Neutral',rule:5};
+ if((call==='WTT'&&put==='WTB')||(call==='WTB'&&put==='WTT'))return {text:'Nifty is Both Side Risky',rule:6};
+ return {text:'NO MATCHING RULE',rule:null};
+}
+function updateMarketSentiment(signals){
+ const sentiment=marketSentiment(signals.CE.message,signals.PE.message);
+ $('marketSentiment').textContent=sentiment.text;
+ $('marketSentimentRule').textContent=sentiment.rule?'RULE '+sentiment.rule+' · VOLUME STATUS':'CALL / PUT volume status';
+ $('marketSentimentCell').title='Based on current volume statuses among displayed strikes. CALL: '+signals.CE.message+' · PUT: '+signals.PE.message;
+}
 function updateVolumeSignals(rows){
-  for(const [side,prefix,label] of [['CE','call','CALLS'],['PE','put','PUTS']]){
-    const signal=volumeSignal(rows,side);
+  const signals={CE:volumeSignal(rows,'CE'),PE:volumeSignal(rows,'PE')};
+  updateMarketSentiment(signals);
+  for(const [side,prefix,label] of [['CE','call','CALL'],['PE','put','PUT']]){
+    const signal=signals[side];
     $(prefix+'Signal').textContent=label+' · '+signal.message;
     $(prefix+'SignalDetail').textContent=signal.detail;
     $(prefix+'SignalBox').classList.toggle('active',signal.active);
     const shift=current?.volume_shifts?.[side],candidate=current?.strength_transitions?.[side];
     const stateCode=({'STRONG':'STRONG','WEAK TOWARDS TOP':'WTT','WEAK TOWARDS BOTTOM':'WTB'})[signal.message];
-    const transition=candidate&&candidate.to_status===stateCode?candidate:null;
-    const event=transition||shift,shiftLabel=$(prefix+'VolumeShift');shiftLabel.hidden=!event;
-    const eventName=transition?transition.from_status+' → '+transition.to_status:shift?.direction;
-    shiftLabel.textContent=event?eventName+' · '+event.from_strikes.map(v=>fmt(v)).join(', ')+' → '+event.to_strikes.map(v=>fmt(v)).join(', ')+' · '+new Date(event.at).toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata',hour:'2-digit',minute:'2-digit',second:'2-digit'})+' IST':'';
-    shiftLabel.title=transition?'First observed capture of this STRONG/WTT/WTB status transition. Recorded change time in IST.':'Latest recorded highest-volume strike movement. Top means higher strike; bottom means lower strike.';
+    const {event,isTransition}=selectSignalEvent(shift,candidate,stateCode),shiftLabel=$(prefix+'VolumeShift');shiftLabel.hidden=!event;
+    const eventName=isTransition?event.from_status+' TO '+event.to_status:event?.direction;
+    shiftLabel.replaceChildren();
+    if(event){
+      const badge=document.createElement('span');badge.className='event-badge';badge.textContent=eventName;
+      const details=' · '+event.from_strikes.map(v=>fmt(v)).join(', ')+' TO '+event.to_strikes.map(v=>fmt(v)).join(', ')+' · '+new Date(event.at).toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:true}).toUpperCase()+' IST';
+      shiftLabel.append(badge,document.createTextNode(details));
+    }
+    shiftLabel.title=isTransition?'First observed capture of this STRONG/WTT/WTB status transition. Recorded change time in IST.':'Latest recorded highest-volume strike movement. Top means higher strike; bottom means lower strike.';
 
 
   }
 }
 
 function volumeCell(value,side,max,second=null,metric='volume'){const td=cell('',side+'-cell'),bar=document.createElement('span'),label=document.createElement('span');bar.className='bar';bar.style.width=Math.min(100,(number(value)||0)/max*100)+'%';label.className='vol';label.textContent=fmt(value);if(number(value)>0&&number(value)===max){td.className+=' peak-volume';td.title='Highest '+(side==='call'?'call':'put')+' '+metric+' among displayed strikes'}else if(number(value)>0&&number(value)===second){td.className+=' second-volume'+(number(value)/max<0.75?' second-faint':'');td.title='Second-highest '+(side==='call'?'call':'put')+' '+metric+' among displayed strikes'}if(metric==='volume')td.append(bar);td.append(label);const n=number(value);if(n>0&&(n===max||n===second)){const percent=document.createElement('small');percent.className='volume-percent';percent.textContent=n===max?'100%':(n/max*100).toFixed(1)+'% · '+((max-n)/max*100).toFixed(1)+'% less';percent.title='Relative to the highest '+(side==='call'?'call':'put')+' '+metric+' among displayed strikes';td.append(percent)}return td}
-function spotRow(spot){const tr=document.createElement('tr');tr.className='spot-row';const left=cell('NIFTY CURRENT PRICE');left.colSpan=4;const mid=cell(fmt(spot,true),'spot-cell'),right=cell('SPOT · NSE SNAPSHOT');right.colSpan=4;tr.append(left,mid,right);return tr}
+function spotMetricCell(rows,side,metric){
+ const ranks=volumeRanks(rows,side+'_'+metric),signal=volumeSignal(rows,side,metric);
+ const names={'WEAK TOWARDS TOP':'WTT','WEAK TOWARDS BOTTOM':'WTB','STRONG':'STRONG','NO WEAK SIGNAL':'NEUTRAL','MIXED STRIKE DIRECTION':'MIXED','NOT ENOUGH VOLUME DATA':'N/A'};
+ const td=cell('', 'spot-summary '+(side==='CE'?'call-summary':'put-summary'));
+ const status=document.createElement('span');status.className='spot-status';status.textContent=names[signal.message]||signal.message;
+ const percent=document.createElement('small');percent.className='spot-ratio';percent.textContent=ranks.length>=2?(ranks[1]/ranks[0]*100).toFixed(1)+'%':'—';
+ td.title=(side==='CE'?'Call ':'Put ')+(metric==='openInterest'?'OI':'volume')+' · Second-highest as % of highest among displayed strikes · '+signal.detail;
+ td.append(status,percent);return td;
+}
+function spotRow(spot,rows){
+ const tr=document.createElement('tr');tr.className='spot-row';
+ const left=cell('NIFTY CURRENT PRICE');left.colSpan=2;
+ const mid=cell(fmt(spot,true),'spot-cell'),right=cell('SPOT · NSE SNAPSHOT');right.colSpan=2;
+ tr.append(left,spotMetricCell(rows,'CE','openInterest'),spotMetricCell(rows,'CE','totalTradedVolume'),mid,spotMetricCell(rows,'PE','totalTradedVolume'),spotMetricCell(rows,'PE','openInterest'),right);return tr;
+}
 function totalsRow(totals={}){
  const tr=document.createElement('tr');tr.className='totals-row';tr.setAttribute('aria-label','Volume and open interest totals for displayed strikes');
  tr.append(cell('—','call-cell'),cell('—','call-cell'),cell(fmt(totals.CE_openInterest),'call-cell'),cell(fmt(totals.CE_totalTradedVolume),'call-cell'),cell('TOTAL · ALL '+(totals.strike_count??'—')+' STRIKES','strike'),cell(fmt(totals.PE_totalTradedVolume),'put-cell'),cell(fmt(totals.PE_openInterest),'put-cell'),cell('—','put-cell'),cell('—','put-cell'));
  tr.title='Sums of reported non-negative OI and volume across all collected strikes for this snapshot and expiry, including strikes outside ±600. Missing values are excluded; prices and RSI are not summed.';
  return tr;
 }
-function render(snapshot){const rows=snapshot.rows,spot=snapshot.spot;updateVolumeSignals(rows);$('spot').textContent=fmt(spot,true);$('indexRsi').textContent=number(snapshot.index_rsi)===null?'N/A':Number(snapshot.index_rsi).toFixed(2);$('marketTime').textContent='NSE · '+(snapshot.market_timestamp||'Timestamp unavailable');$('expiry').textContent='Expiry · '+snapshot.expiry;$('strikeCount').textContent=' / '+rows.length+' strikes';$('download').hidden=false;$('download').href='/api/download?id='+encodeURIComponent(snapshot.id);for(const side of ['CE','PE']){const prefix=side==='CE'?'call':'put';const valid=rows.filter(r=>number(r[side+'_totalTradedVolume'])!==null);const highest=valid.length?Math.max(...valid.map(r=>number(r[side+'_totalTradedVolume']))):null;const strikes=valid.filter(r=>number(r[side+'_totalTradedVolume'])===highest).map(r=>fmt(r.strikePrice));$(prefix+'Volume').textContent=fmt(highest);$(prefix+'Oi').textContent=strikes.length?(strikes.length>1?'Strikes ':'Strike ')+strikes.join(', '):'Strike —'}const callRanks=volumeRanks(rows,'CE_totalTradedVolume'),putRanks=volumeRanks(rows,'PE_totalTradedVolume'),maxCall=callRanks[0]||1,maxPut=putRanks[0]||1,callOiRanks=volumeRanks(rows,'CE_openInterest'),putOiRanks=volumeRanks(rows,'PE_openInterest');const body=document.createDocumentFragment();let inserted=false;for(const row of rows){if(!inserted&&Number(row.strikePrice)>=spot){body.append(spotRow(spot));inserted=true}const tr=document.createElement('tr');tr.append(rsiCell(row.CE_RSI14_15m,'call'),cell(fmt(row.CE_lastPrice,true),'call-cell'),volumeCell(row.CE_openInterest,'call',callOiRanks[0]||1,callOiRanks[1]??null,'open interest'),volumeCell(row.CE_totalTradedVolume,'call',maxCall,callRanks[1]??null),cell(fmt(row.strikePrice),'strike'),volumeCell(row.PE_totalTradedVolume,'put',maxPut,putRanks[1]??null),volumeCell(row.PE_openInterest,'put',putOiRanks[0]||1,putOiRanks[1]??null,'open interest'),cell(fmt(row.PE_lastPrice,true),'put-cell'),rsiCell(row.PE_RSI14_15m,'put'));appendBaseline(tr,row,snapshot);body.append(tr)}if(!inserted)body.append(spotRow(spot));body.append(totalsRow(snapshot.totals));$('rows').replaceChildren(body)}
+function priceHighlightContext(rows,spot,now=new Date()){
+ const weekday=new Intl.DateTimeFormat('en-US',{timeZone:'Asia/Kolkata',weekday:'long'}).format(now);
+ const band=weekday==='Thursday'?{low:93,high:105}:weekday==='Tuesday'?{low:23,high:34}:null;
+ const strikes=new Set();
+ if(!band||number(spot)===null)return {band,weekday,strikes};
+ const eligible=rows.map(r=>number(r.strikePrice)).filter(n=>n!==null&&n>0&&n%100===50);
+ const below=eligible.filter(n=>n<=Number(spot)),above=eligible.filter(n=>n>=Number(spot));
+ if(below.length)strikes.add(Math.max(...below));if(above.length)strikes.add(Math.min(...above));
+ return {band,weekday,strikes};
+}
+function priceCell(value,side,strike,context){
+ const td=cell(fmt(value,true),side+'-cell'),n=number(value);
+ if(context.band&&context.strikes.has(Number(strike))&&n!==null&&n>context.band.low&&n<=context.band.high){
+  td.className+=' price-window-match';
+  td.title=context.weekday+' (IST) price rule: '+context.band.low+' < price ≤ '+context.band.high+' · Nearest strike ending in 50 on this side of spot';
+ }
+ return td;
+}
+function render(snapshot){const rows=snapshot.rows,spot=snapshot.spot,priceContext=priceHighlightContext(rows,spot);updateVolumeSignals(rows);$('spot').textContent=fmt(spot,true);$('indexRsi').textContent=number(snapshot.index_rsi)===null?'N/A':Number(snapshot.index_rsi).toFixed(2);$('marketTime').textContent='NSE · '+(snapshot.market_timestamp||'Timestamp unavailable');$('expiry').textContent='Expiry · '+snapshot.expiry;$('strikeCount').textContent=' / '+rows.length+' strikes';$('download').hidden=false;$('download').href='/api/download?id='+encodeURIComponent(snapshot.id);for(const side of ['CE','PE']){const prefix=side==='CE'?'call':'put';const valid=rows.filter(r=>number(r[side+'_totalTradedVolume'])!==null);const highest=valid.length?Math.max(...valid.map(r=>number(r[side+'_totalTradedVolume']))):null;const strikes=valid.filter(r=>number(r[side+'_totalTradedVolume'])===highest).map(r=>fmt(r.strikePrice));$(prefix+'Volume').textContent=fmt(highest);$(prefix+'Oi').textContent=strikes.length?(strikes.length>1?'Strikes ':'Strike ')+strikes.join(', '):'Strike —'}const callRanks=volumeRanks(rows,'CE_totalTradedVolume'),putRanks=volumeRanks(rows,'PE_totalTradedVolume'),maxCall=callRanks[0]||1,maxPut=putRanks[0]||1,callOiRanks=volumeRanks(rows,'CE_openInterest'),putOiRanks=volumeRanks(rows,'PE_openInterest');const body=document.createDocumentFragment();let inserted=false;for(const row of rows){if(!inserted&&Number(row.strikePrice)>=spot){body.append(spotRow(spot,rows));inserted=true}const tr=document.createElement('tr');tr.append(rsiCell(row.CE_RSI14_15m,'call'),priceCell(row.CE_lastPrice,'call',row.strikePrice,priceContext),volumeCell(row.CE_openInterest,'call',callOiRanks[0]||1,callOiRanks[1]??null,'open interest'),volumeCell(row.CE_totalTradedVolume,'call',maxCall,callRanks[1]??null),cell(fmt(row.strikePrice),'strike'),volumeCell(row.PE_totalTradedVolume,'put',maxPut,putRanks[1]??null),volumeCell(row.PE_openInterest,'put',putOiRanks[0]||1,putOiRanks[1]??null,'open interest'),priceCell(row.PE_lastPrice,'put',row.strikePrice,priceContext),rsiCell(row.PE_RSI14_15m,'put'));appendBaseline(tr,row,snapshot);body.append(tr)}if(!inserted)body.append(spotRow(spot,rows));body.append(totalsRow(snapshot.totals));$('rows').replaceChildren(body)}
 function status(state){$('refresh').disabled=state.loading||state.collector_available===false;$('refresh').innerHTML=state.loading?'<span class="spinner"></span>Fetching data…':'↻ &nbsp;Refresh now';$('track').classList.toggle('active',state.loading);$('status').className='pill'+(state.loading?' busy':state.error||state.cached?'':' good');$('statusText').textContent=state.loading?'Fetching update':state.error?'Update failed':state.cached?'Saved snapshot':'Auto refresh on';$('error').hidden=!state.error;$('error').textContent=state.error||'';if(state.last_success){$('freshness').textContent='Last successful fetch '+new Date(state.last_success).toLocaleTimeString('en-IN',{timeZone:'Asia/Kolkata'})+' IST'+(state.loading?' · Updating…':'')}else{$('freshness').textContent=state.snapshot?'Showing a previously saved snapshot · Waiting for a successful fetch.':'Fetching the first snapshot…'}$('detail').hidden=!(state.warnings||[]).length;$('warnings').textContent=(state.warnings||[]).join('\n');if(!state.snapshot&&!state.loading&&state.error){$('rows').replaceChildren();const tr=document.createElement('tr'),td=cell('No snapshot yet. Check the message above, then refresh.','empty');td.colSpan=9;tr.append(td);$('rows').append(tr)}if(state.collector_available===false&&!state.error){$('status').className='pill';$('statusText').textContent='Collector stopped';$('refresh').textContent='Collector unavailable';$('freshness').textContent=(state.collection_status||'Collector unavailable')+' · Saved data remains available.'}tick()}
 let previousCloseBusy=false;
 function showPreviousClose(data){
@@ -120,7 +191,7 @@ function showPreviousClose(data){
  if(!s){$('previousCloseMeta').textContent='No previous session closing snapshot is stored. A stored NSE timestamp between 15:30 and 15:59 IST is required; intraday data is not used.';return}
  $('previousCloseMeta').textContent='Latest available previous session: '+s.session_day+' · NSE '+s.snapshot.market_timestamp+' IST · Expiry '+s.snapshot.expiry+' · All '+s.strike_count+' stored strikes (not limited to ±600).';
  const grid=document.createElement('div');grid.className='close-grid';
- for(const [side,label,cls] of [['CE','CALLS','green'],['PE','PUTS','red']]){
+ for(const [side,label,cls] of [['CE','CALL','green'],['PE','PUT','red']]){
   const panel=document.createElement('div');panel.className='close-side';const heading=document.createElement('h3');heading.className=cls;heading.textContent=label+' · At close';panel.append(heading);
   for(const [metric,title] of [['volume','Volume'],['oi','OI']]){
    const m=s.sides[side][metric],block=document.createElement('div');block.className='close-level';const total=document.createElement('strong');total.textContent='Total '+title+': '+fmt(m.total);block.append(total);
@@ -128,7 +199,7 @@ function showPreviousClose(data){
    if(m.top.length<2){const line=document.createElement('div');line.className='subtle';line.textContent=m.top.length?'No second distinct positive level':'No positive levels available';block.append(line)}
    const coverage=document.createElement('span');coverage.className='subtle';coverage.textContent='Reported for '+m.available_strikes+' / '+s.strike_count+' strikes';block.append(coverage);panel.append(block);
   }grid.append(panel);
- }host.append(grid);const combined=document.createElement('div');combined.className='close-total';combined.textContent='CALLS + PUTS · Total volume: '+fmt(s.combined.volume)+' · Total OI: '+fmt(s.combined.oi);host.append(combined);
+ }host.append(grid);const combined=document.createElement('div');combined.className='close-total';combined.textContent='CALL + PUT · Total volume: '+fmt(s.combined.volume)+' · Total OI: '+fmt(s.combined.oi);host.append(combined);
  const note=document.createElement('div');note.className='subtle';note.textContent='Rankings use two distinct positive levels; tied strikes are grouped. Totals sum reported values in this closing snapshot across the stored expiry, not across time or other expiries. Missing values are excluded.';host.append(note);
 }
 async function loadPreviousClose(){

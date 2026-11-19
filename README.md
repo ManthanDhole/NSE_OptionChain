@@ -448,3 +448,46 @@ Second-highest volume and OI cells use a very faint green/red tint when their va
 is strictly below 75% of that side's maximum for the same metric. At or above 75%,
 the existing second-highest shade remains. Percentage labels stay visible; the
 Highlights toggle still disables all ranking colours and percentages.
+
+The Nifty current-price row shows a status and second-highest/max percentage under
+each of the call/put Volume and OI columns. Metrics are ranked independently among
+the displayed strikes. WTT means the second-highest strike is above the highest;
+WTB means below. Below 75% is STRONG; exactly 75% is NEUTRAL. Overlapping tied
+strikes show MIXED; insufficient levels show N/A. The Highlights switch hides
+these percentages along with the other ranking percentages. Table order and
+alignment remain unchanged, with the current price centered in the strike column.
+
+The top signal movement line displays the most recent strike-shift or matching
+status-transition event. If a WTT↔WTB flip and a volume-leader move happen in the
+same capture, the strike movement direction takes priority. Simultaneous changes
+to/from STRONG retain their status-transition label. Older status events cannot
+hide newer strike movements; displayed strikes and times always belong to the
+selected event. Higher-to-lower means top-to-bottom, independent of table order.
+
+### Overall market sentiment
+
+The purple center cell above STRIKE updates from the same current CALL/PUT volume
+statuses as the top-row banners (displayed strike range). Rules are symmetric:
+
+| CALL | PUT | Sentiment |
+| --- | --- | --- |
+| WTT | WTT | Nifty is in Bull Run |
+| WTB | WTB | Nifty is in Blood Bath |
+| WTT | STRONG (or reversed) | Nifty is in Slightly Bullish |
+| STRONG | WTB (or reversed) | Nifty is in Slightly Bearish |
+| STRONG | STRONG | Nifty is Neutral |
+| WTT | WTB (or reversed) | Nifty is Both Side Risky |
+
+Exactly-75% neutral statuses and mixed directions show
+NO MATCHING RULE. Insufficient data shows WAITING FOR DATA. This is the configured
+rule result, using volume rather than OI or the historical transition label.
+
+### Near-spot price highlights
+
+On Thursdays (IST), prices **greater than 93 and at most 105** receive a cyan
+highlight; on Tuesdays (IST), the range is **greater than 23 and at most 34**.
+This applies independently to CALL and PUT price cells at the nearest collected
+strike ending in 50 at/below spot and the nearest at/above spot (for example,
+25,450 and 25,550 around 25,510). At an exact eligible spot strike, the same strike
+qualifies once. Other strikes and weekdays are unaffected. The Highlights toggle
+also disables these price highlights. Hover over a matching price for its rule.
